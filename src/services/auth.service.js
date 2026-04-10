@@ -96,7 +96,7 @@ exports.registerWorker = async ({
 exports.login = async (phone, password) => {
 
     const user = await User.query()
-        .select("id", "name", "phone", "password", "email", "gender", "role", "is_verified", "profile_photo")
+        .select("id", "name", "phone", "password", "email", "whatsapp", "gender", "role", "is_verified", "profile_photo")
         .findOne({ phone })
         .withGraphFetched('[availability,workerProfile,activeSubscription]');
 
@@ -126,7 +126,7 @@ exports.login = async (phone, password) => {
     return {
         user: {...user, 
             workerProfile: user.workerProfile ?? {},
-            availability: user.availability?? {}
+            availability: user.availability?? []
         },
         token: accessToken,
         refreshToken

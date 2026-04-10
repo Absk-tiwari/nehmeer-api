@@ -1,3 +1,4 @@
+const User = require("../database/models/User");
 const authService = require("../services/auth.service");
 
 exports.register = async (req, res, next) => {
@@ -87,4 +88,12 @@ exports.logout = async (req, res, next) => {
 
 exports.me = async (req, res) => {
     res.json({ success: true, data: req.user });
+}
+
+exports.savePushToken = async (req, res) => {
+    await User.query()
+    .findById(req.user.id)
+    .patch({ expo_push_token: req.body.token });
+
+    res.json({ success: true });
 }

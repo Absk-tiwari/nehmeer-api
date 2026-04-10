@@ -16,4 +16,6 @@ router.post("/verify-otp", AuthController.verifyOTP);
 router.get('/me', authenticate, AuthController.me);
 
 router.post('/refresh', AuthController.refreshToken);
+router.post('/save-expo-token', authenticate, AuthController.savePushToken);
+
 module.exports = router;

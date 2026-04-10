@@ -1,9 +1,10 @@
 const User = require('./../database/models/User.js');
 const ReviewService = require('../services/ReviewService');
 const WorkerProfile = require('../database/models/WorkerProfile');
-const { Model } = require('objection');
+const { Model, raw } = require('objection');
 const Review = require('../database/models/Review.js');
 const Location = require('../database/models/Location.js');
+const WorkerAvailability = require('../database/models/WorkerAvailability.js');
 
 class ProfileController {
 
@@ -23,24 +24,36 @@ class ProfileController {
     async getWorkers(req, res, next) {
         try {
             const { search, address } = req.body;
-            console.log("ye rha address: ",address);
+            // console.log("ye rha address: ", address);
             const query = User.query()
-                .where('role', 'worker')
-                .andWhere('is_active', true)
+                .alias('u')
+                .where('u.role', 'worker')
+                .andWhere('u.is_active', true)
+                .leftJoin('reviews as rr', 'rr.reviewee_id', 'u.id')
+                .select('u.*')
+                .select(
+                    User.relatedQuery('receivedReviews')
+                        .avg('rating')
+                        .as('avg_rating'),
+                    User.relatedQuery('receivedReviews')
+                        .count()
+                        .as('total_reviews')
+                )
                 .withGraphFetched('workerProfile');
 
             if (search) {
                 query.where('name', 'like', `%${search}%`);
             }
 
-            if (address) {
+            if (address && address.city) {
                 query
                     .joinRelated('workerProfile') // 🔥 joins worker_profiles
                     .where('workerProfile.city', 'like', `%${address.city}%`);
             }
 
+            // console.log("Final workers Query: ", query.toKnexQuery().toString());
             const workers = await query;
-            // console.log("Ja rhe workers", workers);
+            console.log("Ja rhe workers", workers);
             res.json({ success: true, data: workers });
         } catch (err) { next(err); }
     }
@@ -64,14 +77,45 @@ class ProfileController {
                 .where('user_id', req.user.id)
                 .first();
 
+            const { name, whatsapp, lookingFor, email, gender, availability, ...rest } = req.body
+            console.log("ye rhi baki ka : ", rest);
             let updated;
+            const user = await User.query().patchAndFetchById(req.user.id, {
+                name,
+                whatsapp,
+                email,
+                gender,
+            });
             if (profile) {
-                updated = await WorkerProfile.query().patchAndFetchById(profile.id, req.body);
+                updated = await WorkerProfile.query()
+                    .patchAndFetchById(profile.id, {
+                        ...rest
+                    });
             } else {
-                updated = await WorkerProfile.query().insertAndFetch({ ...req.body, user_id: req.user.id });
+                updated = await WorkerProfile.query()
+                    .insertAndFetch({
+                        ...rest,
+                        user_id: req.user.id
+                    });
             }
 
-            res.json({ success: true, data: updated });
+            await WorkerAvailability.query().where("worker_id", req.user.id).delete();
+
+            availability.forEach(async av => {
+                await WorkerAvailability.query().insert({
+                    worker_id: req.user.id,
+                    ...av
+                });
+            })
+
+            res.json({
+                success: true,
+                data: {
+                    user,
+                    workerProfile: updated,
+                    availability
+                }
+            });
         } catch (err) { next(err); }
     }
     // ─── Update Employer Profile ─────────────────────────────────────────────────
@@ -90,7 +134,6 @@ class ProfileController {
     // ─── View Public Profile ─────────────────────────────────────────────────────
     async getPublicProfile(req, res, next) {
         try {
-            console.log("Aaya kya ??");
             const user = await User.query()
                 .findOne({ id: req.params.id, is_active: true })
                 .withGraphFetched('[workerProfile, availability]');
@@ -138,6 +181,7 @@ class ProfileController {
                     Model.knex().raw('COUNT(reviews.id) as reviews_count'),
                     Model.knex().raw('AVG(reviews.rating) as avg_rating')
                 )
+                .orderBy("id",'desc')
                 .page(page - 1, limit);
 
             const formatted = result.results.map((user) => ({
@@ -185,9 +229,8 @@ class ProfileController {
     }
 
 
-    async saveLocation(req,res,next){
-        try 
-        {
+    async saveLocation(req, res, next) {
+        try {
             const {
                 latitude,
                 longitude,
@@ -196,7 +239,7 @@ class ProfileController {
                 ...rest
             } = req.body.address;
             console.log("yahi sab aya hai: ", req.body);
-            
+
             const result = await Location.query().insertAndFetch({
                 latitude,
                 longitude,
@@ -209,8 +252,8 @@ class ProfileController {
             });
 
             res.json({
-                status:true,
-                data:result
+                status: true,
+                data: result
             });
             // console.log(req.body)
         } catch (error) {
@@ -218,26 +261,22 @@ class ProfileController {
         }
     }
 
-    async removeLocation(req,res,next) {
+    async removeLocation(req, res, next) {
         try {
             await Location.query().deleteById(req.params.id)
             res.json({
-                success:true,
+                success: true,
                 message: "Location removed!"
             })
         } catch (error) {
             next(error)
         }
     }
-    
-    async getLocations(req,res,next){
+
+    async getLocations(req, res, next) {
         try {
             const result = await Location.query().where('user_id', req.user.id).orderBy('id', 'desc');
-            console.log("aya hai bhai aya hai...",result);
-            res.json({
-                status:true,
-                data:result
-            });
+            res.json(result);
         } catch (error) {
             next(error)
         }

@@ -18,13 +18,13 @@ class NotificationService {
 
     async markAsRead(notificationId, userId) {
         return Notification.query()
-            .patchAndFetchById(notificationId, { is_read: true, read_at: new Date() })
+            .patchAndFetchById(notificationId, { is_read: true})
             .where('user_id', userId);
     }
 
     async markAllAsRead(userId) {
         return Notification.query()
-            .patch({ is_read: true, read_at: new Date() })
+            .patch({ is_read: true })
             .where({ user_id: userId, is_read: false });
     }
 

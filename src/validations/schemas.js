@@ -21,7 +21,11 @@ const resetPasswordSchema = Joi.object({
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 const updateWorkerProfileSchema = Joi.object({
-  role: Joi.string().max(255).allow('', null),
+  name: Joi.string().max(255).allow('', null),
+  whatsapp: Joi.string().max(255).allow('', null),
+  email: Joi.string().max(255).allow('', null),
+  gender: Joi.string().max(255).allow('', null),
+  location: Joi.string().max(255).allow('', null),
   age: Joi.number().integer().min(18).max(80),
   education: Joi.string().max(255).allow('', null),
   language: Joi.string().max(255).allow('', null),
@@ -32,8 +36,18 @@ const updateWorkerProfileSchema = Joi.object({
   description: Joi.string().allow('', null),
   experience: Joi.number().integer().min(0).max(60),
   skills: Joi.alternatives().try(
-    Joi.array().items(Joi.string()),
-    Joi.string().allow('', null) // if stored as JSON/string in DB
+    Joi.array().items(Joi.string().trim().min(1)).default([]),
+    Joi.string().custom((value, helpers) => {
+      try {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed)) {
+          return helpers.error("any.invalid");
+        }
+        return parsed;
+      } catch {
+        return helpers.error("any.invalid");
+      }
+    })
   ),
   part_time_salary: Joi.number().min(0),
   full_time_salary: Joi.number().min(0),
@@ -46,6 +60,15 @@ const updateWorkerProfileSchema = Joi.object({
   longitude: Joi.number().min(-180).max(180),
   city: Joi.string().max(255).allow('', null),
   service_radius_km: Joi.number().min(0).max(100),
+  availability: Joi.array().items(
+    Joi.object({
+      type: Joi.string().trim().required(),
+      start_time: Joi.string()
+        .required(),
+      end_time: Joi.string()
+        .required()
+    })
+  ).min(1).required()
 });
 
 const updateEmployerProfileSchema = Joi.object({

@@ -1,5 +1,6 @@
 const JobRole = require('../database/models/JobRole');
 const ApplicationService = require('../services/ApplicationService');
+const { sendNotification } = require('../services/notification.service');
 const { requirementDetails } = require('../utils/helpers');
 
 class ApplicationController {
@@ -8,6 +9,17 @@ class ApplicationController {
         try {
             const application = await ApplicationService
                 .apply(req.user.id, req.params.jobId, req.body);
+
+            // 🔔 Notify employer
+            await sendNotification({
+                user_id: application.job.employer_id, // make sure service returns job relation
+                title: "New Application Received",
+                message: `${req.user.name} applied for your job`,
+                data: {
+                    type: "job-details",
+                    id: req.params.jobId
+                }
+            });
 
             res.status(201)
                 .json({
@@ -63,6 +75,16 @@ class ApplicationController {
             const application = await ApplicationService
                 .updateStatus(req.params.id, req.user.id, status, employer_notes);
 
+            await sendNotification({
+                user_id: application.worker_id,
+                title: "Application Status Updated",
+                message: `Your application is now ${status}`,
+                data: {
+                    type: 'job-details',
+                    id: application.job_id
+                }
+            });
+
             res.json({
                 success: true,
                 message: 'Application status updated',
@@ -101,10 +123,10 @@ class ApplicationController {
         try {
             const { role } = req.query;
             const result = await JobRole.query()
-                .whereLike('name', `%${role}%`)
+                .where('name', 'like', `%${role}%`)
                 .withGraphFetched('custom_questions')
                 .modifyGraph('custom_questions', builder => {
-                    builder.select('id','question_key', 'question_text');
+                    builder.select('id', 'question_key', 'question_text');
                 });
 
             res.json({

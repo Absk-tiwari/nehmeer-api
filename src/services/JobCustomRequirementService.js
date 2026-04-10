@@ -1,15 +1,18 @@
 const CustomRequest = require('../database/models/CustomRequest');
+const EmployerWorker = require('../database/models/EmployerWorker');
+const User = require('../database/models/User');
+const { sendNotification } = require('./notification.service');
 
 class JobCustomRequirementService {
     async customRequest(employerId, data) {
-        console.log("Ye sab aya hai mere pas employer id: " + employerId + " k liye ", data);
-        
-        const {worker_id, ...rest} = data;
+        // console.log("Ye sab aya hai mere pas employer id: " + employerId + " k liye ", data);
+
+        const { worker_id, ...rest } = data;
 
         const job = await CustomRequest.query().insertAndFetch({
             employer_id: employerId,
             worker_id, // This will be assigned by the backend when a worker accepts the request
-            data: {...rest}
+            data: { ...rest }
         });
 
         /*
@@ -38,13 +41,48 @@ class JobCustomRequirementService {
         //     .orderBy('sort_order', 'asc');
     }
 
-    async getOwnCustomRequests(userId, { page = 1, limit = 20 }) {
+    async updateRequest(body) {
+        const {id, stat, ...rest} = body;
+        const request = await CustomRequest.query().patchAndFetchById(id, {
+            status: stat
+        });
+        if(stat ) {
+            // console.log(id, stat, rest, typeof rest.data);
+            await EmployerWorker.query().insert({
+                worker_id: rest.worker_id,
+                employer_id: rest.employer_id,
+                status: 'active',
+                work_type: rest.data.title
+            })
+            const worker = await User.query().where('id', rest.worker_id).first();
+            console.log("fetched worker", worker );
+            sendNotification({
+                user_id: request.employer_id,
+                title: worker.name + " accepted the custom work request!",
+                message: worker.name + " is joining you for work!",
+            });
+        }
+        return request;
+    }
+
+    async getOwnCustomRequests(userId, role, { page = 1, limit = 20, tab }) {
         try {
-            const result = await CustomRequest.query()
-                .where('employer_id', userId)
-                .orWhere('worker_id', userId)
+            const query = CustomRequest.query();
+            // console.log("Tab:", tab);
+            if (tab !== 'pending') {
+                query.where('status', '<>', 'pending')
+            } else {
+                query
+                    .where('status', tab)
+            }
+            if (role === 'worker') {
+                query.where('status', '<>', 'cancelled')
+            }
+            query.where('employer_id', userId).orWhere('worker_id', userId)
                 .orderBy('created_at', 'desc')
                 .page(page - 1, limit);
+
+            const result = await query;
             return result;
 
         } catch (err) {

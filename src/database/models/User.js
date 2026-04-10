@@ -135,7 +135,7 @@ class User extends BaseModel {
                 }
             },
             availability: {
-                relation: BaseModel.HasOneRelation,
+                relation: BaseModel.HasManyRelation,
                 modelClass: require('./WorkerAvailability'),
                 join: {
                     from : 'users.id',

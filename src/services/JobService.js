@@ -62,8 +62,7 @@ class JobService {
                 .where('jq_loc.question_text', 'like', '%location%')
                 .where('ja_loc.answer', 'like', `%${filters.location}%`);
         }
-
-        console.log("Final Query: ", query.toKnexQuery().toString());
+        // console.log("Final Query: ", query.toKnexQuery().toString());
         return query;
     }
 
@@ -71,7 +70,7 @@ class JobService {
     async getById(jobId, userId) {
         const job = await Job.query()
             .findById(jobId)
-            .withGraphFetched('employer');
+            .withGraphFetched('[answers.question,role,employer]')
 
         if (!job) {
             const err = new Error('Job not found');

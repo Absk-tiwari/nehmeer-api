@@ -21,7 +21,7 @@ router.put(
     '/worker',
     authenticate,
     authorize('worker'),
-    validate(updateWorkerProfileSchema),
+    // validate(updateWorkerProfileSchema),
     ProfileController.updateWorkerProfile
 );
 

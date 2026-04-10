@@ -42,7 +42,17 @@ class JobController {
     async getById(req, res, next) {
         try {
             const job = await JobService.getById(req.params.id, req.user.id);
-            res.json({ success: true, data: job });
+            res.json({
+                success: true,
+                data: {
+                    ...job,
+                    role: job.role.name,
+                    answers: job.answers.map(a => ({
+                        question: a.question.question_text,
+                        answer: a.answer
+                    }))
+                }
+            });
         } catch (err) { next(err); }
     }
 
@@ -112,11 +122,12 @@ class JobController {
     async getMyCustomRequests(req, res, next) {
         try {
 
-            const { page, limit } = req.query;
+            const { page, limit, tab = "pending" } = req.query;
             // console.log("Ye rha mai: "+ JSON.stringify(req.user.role) + " aur ye Meri custom requests : " + page + " limit: " + limit);
-            const result = await JobCustomRequirementService.getOwnCustomRequests(req.user.id, {
+            const result = await JobCustomRequirementService.getOwnCustomRequests(req.user.id, req.user.role, {
                 page: parseInt(page) || 1,
-                limit: parseInt(limit) || 20
+                limit: parseInt(limit) || 20,
+                tab
             });
             res.json({
                 success: true,
@@ -129,6 +140,18 @@ class JobController {
             });
 
         } catch (err) { next(err); }
+    }
+
+    async respondRequest(req, res, next) {
+        try {
+            const result = await JobCustomRequirementService.updateRequest({ role: req.user.role, ...req.body });
+            res.json({
+                status: true,
+                message: "Request " + (result.status === 'accepted' ? "accepted!" : `${result.status}!`)
+            })
+        } catch (error) {
+            next(error);
+        }
     }
 
 }

@@ -12,6 +12,7 @@ router.get('/qa', ApplicationController.getQuestionAnswers);
 router.get('/custom-questions', ApplicationController.getCustomQuestions);
 router.get('/custom-requests', authenticate, JobController.getMyCustomRequests);
 router.post('/custom-request', authenticate, JobController.sendHireRequest);
+router.post('/custom-request-response', authenticate, JobController.respondRequest);
 
 // Employer: manage jobs
 router.post('/create', authenticate, authorize('employer', 'admin'), validate(createJobSchema), JobController.create);
