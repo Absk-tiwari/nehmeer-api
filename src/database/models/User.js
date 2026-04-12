@@ -10,24 +10,6 @@ class User extends BaseModel {
         return ['password', 'email_verification_token', 'password_reset_token'];
     }
 
-    static get jsonSchema() {
-        return {
-            type: 'object',
-            required: ['name', 'email', 'password', 'role'],
-            properties: {
-                id: { type: 'integer' },
-                role: { type: 'string', enum: ['admin', 'worker', 'employer'] },
-                name: { type: ['string','null'], minLength: 3, maxLength: 100 },
-                email: { type: ['string','null'], format: 'email' },
-                password: { type: 'string' },
-                phone: { type: ['string', 'null'] },
-                avatar: { type: ['string', 'null'] },
-                is_verified: { type: 'boolean' },
-                is_active: { type: 'boolean' },
-            },
-        };
-    }
-
     static get relationMappings() {
 
         const WorkerProfile = require("./WorkerProfile");

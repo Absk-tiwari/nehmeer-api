@@ -46,7 +46,7 @@ class SubscriptionController {
         try {
             const user = req.user;
             const { plan_id } = req.body;
-            console.log("Ye rhi plan_id: " + plan_id);
+            // console.log("Ye rhi plan_id: " + plan_id);
 
             const plan = await Subscription.query()
                 .where({ id: plan_id })
