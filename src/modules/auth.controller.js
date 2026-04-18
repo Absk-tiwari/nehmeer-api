@@ -87,7 +87,8 @@ exports.logout = async (req, res, next) => {
 };
 
 exports.me = async (req, res) => {
-    res.json({ success: true, data: req.user });
+    const user = await User.query().findById(req.user.id);
+    res.json({ success: true, data: user });
 }
 
 exports.savePushToken = async (req, res) => {
